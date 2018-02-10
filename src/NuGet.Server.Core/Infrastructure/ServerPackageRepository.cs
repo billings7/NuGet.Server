@@ -265,8 +265,10 @@ namespace NuGet.Server.Core.Infrastructure
                 {
                     try
                     {
+                        var fullPackagePath = _fileSystem.GetFullPath(packageFile);
+
                         // Create package
-                        var package = PackageFactory.Open(_fileSystem.GetFullPath(packageFile));
+                        var package = PackageFactory.Open(fullPackagePath);
 
                         if (!CanPackageBeAddedWithoutLocking(package, shouldThrow: false))
                         {
@@ -277,6 +279,13 @@ namespace NuGet.Server.Core.Infrastructure
                         var serverPackage = _serverPackageStore.Add(
                             package,
                             EnableDelisting);
+
+                        // Maintain the Creation and LastUpdated timestamps
+                        serverPackage.Created = File.GetCreationTimeUtc(fullPackagePath);
+                        serverPackage.LastUpdated = File.GetLastWriteTimeUtc(fullPackagePath);
+
+                        File.SetCreationTimeUtc(serverPackage.FullPath, serverPackage.Created.UtcDateTime);
+                        File.SetLastWriteTimeUtc(serverPackage.FullPath, serverPackage.LastUpdated.UtcDateTime);
 
                         // Keep track of the the package for addition to metadata store.
                         serverPackages.Add(serverPackage);
